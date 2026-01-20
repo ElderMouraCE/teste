@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hortifruti CG - Controle de Estoque</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.263.1/lucide.min.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .highlight { background-color: #fef3c7; }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #15803d; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #14532d; }
+    </style>
+</head>
+<body class="bg-stone-50 min-h-screen text-gray-800 font-sans">
+
+    <div class="max-w-7xl mx-auto mt-8 mb-8 px-4">
+        
+        <!-- Main Card -->
+        <div class="bg-white shadow-xl rounded-2xl overflow-hidden border border-gray-100">
+            
+            <!-- Brand Header -->
+            <div class="bg-green-800 p-6 sm:p-8 text-white flex justify-between items-center flex-wrap gap-6 relative overflow-hidden">
+                <!-- Decorative Background Pattern -->
+                <div class="absolute top-0 right-0 -mt-4 -mr-4 text-green-700 opacity-20 pointer-events-none">
+                    <i data-lucide="leaf" class="w-64 h-64"></i>
+                </div>
+
+                <div class="flex items-center gap-4 z-10">
+                    <div class="bg-white p-3 rounded-full shadow-lg">
+                        <i data-lucide="sprout" class="h-8 w-8 text-green-700"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-green-300 text-xs font-bold tracking-widest uppercase mb-1">Sistema de Controle</h2>
+                        <h1 class="text-3xl font-extrabold tracking-tight text-white">Hortifruti CG</h1>
+                        <p class="text-green-100 text-sm mt-1 opacity-90 flex items-center gap-2">
+                            <i data-lucide="file-warning" class="h-4 w-4"></i> Relatório de Discrepâncias: Compras vs. Vendas
+                        </p>
+                    </div>
+                </div>
+
+                <button onclick="exportCSV()" class="z-10 group flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-xl shadow-md transition-all transform hover:scale-105 active:scale-95 font-semibold">
+                    <i data-lucide="download" class="h-5 w-5 group-hover:animate-bounce"></i> 
+                    Baixar Relatório
+                </button>
+            </div>
+
+            <!-- Controls Toolbar -->
+            <div class="p-6 bg-stone-50 border-b border-gray-200 flex flex-wrap gap-4 items-center justify-between sticky top-0 z-20 shadow-sm">
+                <!-- Search -->
+                <div class="relative flex-grow max-w-lg group">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <i data-lucide="search" class="h-5 w-5 text-gray-400 group-focus-within:text-green-600 transition-colors"></i>
+                    </div>
+                    <input type="text" id="searchInput" onkeyup="filterData()" 
+                        class="block w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl leading-5 bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-shadow shadow-sm" 
+                        placeholder="Buscar por produto, data ou status...">
+                </div>
+
+                <!-- Filters -->
+                <div class="flex items-center gap-3">
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i data-lucide="store" class="h-4 w-4 text-green-700"></i>
+                        </div>
+                        <select id="storeFilter" onchange="filterData()" 
+                            class="appearance-none block w-56 pl-10 pr-10 py-3 text-base border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent rounded-xl shadow-sm cursor-pointer hover:border-green-400 transition-colors text-gray-700 font-medium">
+                            <option value="TODAS">Todas as Lojas</option>
+                            <option value="CALIFORNIA">Califórnia</option>
+                            <option value="JURACY">Juracy</option>
+                            <option value="SAO CAETANO">São Caetano</option>
+                        </select>
+                        <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                            <i data-lucide="chevron-down" class="h-4 w-4 text-gray-400"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Data Table -->
+            <div class="overflow-x-auto h-[600px] overflow-y-auto bg-white">
+                <table class="min-w-full divide-y divide-gray-100">
+                    <thead class="bg-gray-50 sticky top-0 shadow-sm z-10">
+                        <tr>
+                            <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Loja</th>
+                            <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Produto</th>
+                            <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider w-1/3">Dias de Compra</th>
+                            <th class="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Qtd.</th>
+                            <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody" class="bg-white divide-y divide-gray-100">
+                        <!-- Rows will be populated by JS -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Footer Stats -->
+            <div class="bg-gray-50 px-6 py-4 border-t border-gray-200 flex items-center justify-between text-sm">
+                <div class="flex items-center gap-2 text-gray-600">
+                    <i data-lucide="list" class="h-4 w-4"></i>
+                    Total de registros: <span id="totalCount" class="font-bold text-gray-900 text-base">0</span>
+                </div>
+                <div class="text-gray-400 text-xs">
+                    Dados atualizados do sistema
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Data populated from previous analysis - Ensuring strict syntax
+        const rawData = [
+            { id: "N/A", store: "CALIFORNIA", product: "ABACATE", dates: "Dia 06, Dia 07, Dia 11, Dia 14, Dia 18, Dia 21, Dia 24, Dia 28, Dia 31", qty: 9.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "CALIFORNIA", product: "ABOBORA MARAN.", dates: "Dia 03, Dia 06, Dia 07, Dia 08, Dia 10, Dia 12, Dia 13, Dia 15, Dia 17, Dia 19, Dia 20, Dia 21, Dia 22, Dia 24, Dia 27, Dia 28, Dia 30", qty: 17.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "CALIFORNIA", product: "ABOBRINHA", dates: "Dia 03, Dia 06, Dia 08, Dia 12, Dia 15, Dia 16, Dia 17, Dia 26, Dia 30", qty: 6.5, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "CALIFORNIA", product: "ACELGA", dates: "Dia 24", qty: 1.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "CALIFORNIA", product: "AGUA 1,5 L", dates: "Dia 13", qty: 8.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "CALIFORNIA", product: "AGUA 20 L", dates: "Dia 20", qty: 5.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "CALIFORNIA", product: "AGUA 500ML", dates: "Dia 03", qty: 10.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "CALIFORNIA", product: "ALHO", dates: "Dia 03, Dia 06, Dia 08, Dia 09, Dia 10, Dia 13, Dia 14, Dia 16, Dia 17, Dia 19, Dia 20, Dia 23, Dia 24, Dia 31", qty: 18.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "CALIFORNIA", product: "AMEIXA /SC", dates: "Dia 19", qty: 1.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "CALIFORNIA", product: "AMEIXA F", dates: "Dia 04, Dia 06, Dia 07, Dia 10, Dia 11, Dia 14, Dia 18, Dia 21, Dia 24, Dia 28", qty: 19.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "CALIFORNIA", product: "AMEIXA S/C", dates: "Dia 20", qty: 1.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "CALIFORNIA", product: "AMEIXA SECA S/C", dates: "Dia 08", qty: 1.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "CALIFORNIA", product: "BANANA TERRA", dates: "Dia 04, Dia 06, Dia 07, Dia 10, Dia 12, Dia 15, Dia 17, Dia 19, Dia 21, Dia 23, Dia 24, Dia 27, Dia 28, Dia 29, Dia 31", qty: 1630.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "CALIFORNIA", product: "BATATA D/ROXA", dates: "Dia 09, Dia 15, Dia 19, Dia 21, Dia 29, Dia 30", qty: 7.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "CALIFORNIA", product: "BATATA DOCE", dates: "Dia 02, Dia 03, Dia 04, Dia 06, Dia 07, Dia 08, Dia 10, Dia 11, Dia 15, Dia 16, Dia 17, Dia 19, Dia 21, Dia 24, Dia 26, Dia 28", qty: 17.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "CALIFORNIA", product: "BATATA ING.", dates: "Dia 03, Dia 04, Dia 05, Dia 06, Dia 08, Dia 09, Dia 10, Dia 11, Dia 12, Dia 13, Dia 14, Dia 15, Dia 17, Dia 18, Dia 19, Dia 20, Dia 21, Dia 22, Dia 23, Dia 24, Dia 26, Dia 27, Dia 28, Dia 29, Dia 30, Dia 31", qty: 54.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "CALIFORNIA", product: "BERINJELA", dates: "Dia 06, Dia 07, Dia 08, Dia 12, Dia 13, Dia 14, Dia 16, Dia 17, Dia 22, Dia 27, Dia 29", qty: 6.5, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "CALIFORNIA", product: "BETERRABA", dates: "Dia 02, Dia 03, Dia 06, Dia 08, Dia 09, Dia 10, Dia 11, Dia 12, Dia 13, Dia 14, Dia 16, Dia 17, Dia 19, Dia 20, Dia 21, Dia 23, Dia 24, Dia 27, Dia 30", qty: 16.5, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "CALIFORNIA", product: "CEBOLA BRANCA", dates: "Dia 02, Dia 03, Dia 04, Dia 05, Dia 06, Dia 08, Dia 09, Dia 10, Dia 11, Dia 12, Dia 13, Dia 15, Dia 16, Dia 17, Dia 18, Dia 19, Dia 20, Dia 21, Dia 23, Dia 24, Dia 26, Dia 27, Dia 29, Dia 30, Dia 31", qty: 51.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "CALIFORNIA", product: "CENOURA", dates: "Dia 02, Dia 03, Dia 05, Dia 06, Dia 07, Dia 08, Dia 09, Dia 10, Dia 11, Dia 12, Dia 13, Dia 15, Dia 16, Dia 17, Dia 18, Dia 19, Dia 20, Dia 21, Dia 22, Dia 23, Dia 24, Dia 26, Dia 27, Dia 29, Dia 30, Dia 31", qty: 46.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "CALIFORNIA", product: "CHUCHU", dates: "Dia 02, Dia 03, Dia 04, Dia 05, Dia 06, Dia 08, Dia 09, Dia 10, Dia 11, Dia 12, Dia 13, Dia 15, Dia 16, Dia 17, Dia 18, Dia 19, Dia 20, Dia 21, Dia 23, Dia 24, Dia 26, Dia 27, Dia 29", qty: 40.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "CALIFORNIA", product: "COCO SECO", dates: "Dia 02, Dia 06, Dia 07, Dia 10, Dia 13, Dia 16, Dia 19, Dia 22, Dia 23, Dia 24, Dia 27, Dia 30", qty: 600.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "CALIFORNIA", product: "CRIVO", dates: "Dia 03", qty: 1.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "CALIFORNIA", product: "GOIABA", dates: "Dia 02, Dia 07, Dia 15, Dia 23, Dia 24, Dia 28", qty: 6.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "CALIFORNIA", product: "INHAME KARA", dates: "Dia 03, Dia 06, Dia 07, Dia 10, Dia 11, Dia 13, Dia 14, Dia 16, Dia 22, Dia 24, Dia 26", qty: 12.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "CALIFORNIA", product: "KIWI", dates: "Dia 02, Dia 05, Dia 06, Dia 07, Dia 08, Dia 12, Dia 14, Dia 16, Dia 19, Dia 22, Dia 23, Dia 26, Dia 27, Dia 28, Dia 31", qty: 14.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "CALIFORNIA", product: "LARANJA LIMA", dates: "Dia 24", qty: 1.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "CALIFORNIA", product: "LIMA", dates: "Dia 24", qty: 1.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "CALIFORNIA", product: "MACA ARG", dates: "Dia 04, Dia 09, Dia 11, Dia 16, Dia 19, Dia 22, Dia 23, Dia 24, Dia 27, Dia 28", qty: 5.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "CALIFORNIA", product: "MACA NACIONAL", dates: "Dia 04, Dia 07, Dia 11, Dia 13, Dia 14, Dia 18, Dia 21, Dia 24, Dia 28, Dia 31", qty: 69.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "CALIFORNIA", product: "MACA VERDE", dates: "Dia 07, Dia 14, Dia 22, Dia 26, Dia 28", qty: 2.5, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "CALIFORNIA", product: "MORCOTE", dates: "Dia 04, Dia 14, Dia 18, Dia 21, Dia 24, Dia 28", qty: 6.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "CALIFORNIA", product: "NECTARINA", dates: "Dia 18, Dia 21, Dia 24", qty: 5.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "CALIFORNIA", product: "OVO CODORNA", dates: "Dia 02, Dia 16", qty: 1.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "CALIFORNIA", product: "OVO VERMELHO", dates: "Dia 20", qty: 0.5, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "CALIFORNIA", product: "OVOS VERMELHOS", dates: "Dia 06", qty: 0.5, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "CALIFORNIA", product: "PEPINO", dates: "Dia 02, Dia 03, Dia 04, Dia 05, Dia 06, Dia 07, Dia 09, Dia 10, Dia 11, Dia 13, Dia 14, Dia 15, Dia 16, Dia 17, Dia 20, Dia 21, Dia 22, Dia 23, Dia 24, Dia 26, Dia 28, Dia 29, Dia 30, Dia 31", qty: 28.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "CALIFORNIA", product: "PERA", dates: "Dia 03, Dia 04, Dia 07, Dia 08, Dia 11, Dia 14, Dia 15, Dia 17, Dia 18, Dia 21, Dia 24, Dia 26, Dia 28", qty: 11.5, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "CALIFORNIA", product: "PERA PORTUGUESA", dates: "Dia 04, Dia 07, Dia 11, Dia 14, Dia 21, Dia 24, Dia 28", qty: 6.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "CALIFORNIA", product: "PESSEGO", dates: "Dia 18, Dia 21, Dia 24", qty: 5.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "CALIFORNIA", product: "PIMENTAO", dates: "Dia 03, Dia 04, Dia 05, Dia 06, Dia 07, Dia 08, Dia 10, Dia 11, Dia 13, Dia 14, Dia 15, Dia 17, Dia 18, Dia 20, Dia 22, Dia 23, Dia 24, Dia 26, Dia 27, Dia 29", qty: 39.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "CALIFORNIA", product: "PIMENTAO COLORIDO", dates: "Dia 21, Dia 24, Dia 31", qty: 3.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "CALIFORNIA", product: "PITAYA", dates: "Dia 18, Dia 21", qty: 21.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "CALIFORNIA", product: "QUIABO", dates: "Dia 07, Dia 10, Dia 13, Dia 15, Dia 19, Dia 22, Dia 27, Dia 29", qty: 7.5, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "CALIFORNIA", product: "REPOLHO ROXO", dates: "Dia 07, Dia 12, Dia 18, Dia 21, Dia 26", qty: 5.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "CALIFORNIA", product: "REPOLHO VERDE", dates: "Dia 02, Dia 04, Dia 06, Dia 08, Dia 09, Dia 11, Dia 13, Dia 15, Dia 16, Dia 19, Dia 20, Dia 22, Dia 23, Dia 24, Dia 27, Dia 29, Dia 30", qty: 22.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "CALIFORNIA", product: "TOMATE B-6", dates: "Dia 23, Dia 24, Dia 27", qty: 6.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "CALIFORNIA", product: "TOMATE B6", dates: "Dia 02, Dia 04, Dia 09", qty: 5.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "CALIFORNIA", product: "TOMATE B7", dates: "Dia 02, Dia 03, Dia 04, Dia 05, Dia 06, Dia 08, Dia 09, Dia 10, Dia 11, Dia 12, Dia 13, Dia 14, Dia 15, Dia 16, Dia 17, Dia 18, Dia 19, Dia 20, Dia 21, Dia 22, Dia 23, Dia 24, Dia 26, Dia 27, Dia 28, Dia 29, Dia 30", qty: 79.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "CALIFORNIA", product: "TOMATE CEREJA", dates: "Dia 21", qty: 1.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "CALIFORNIA", product: "UMA NUBIA", dates: "Dia 02, Dia 03, Dia 04, Dia 05, Dia 06, Dia 07, Dia 08, Dia 10, Dia 12, Dia 14, Dia 15, Dia 16, Dia 17, Dia 18, Dia 19, Dia 21, Dia 22, Dia 24, Dia 26, Dia 28, Dia 29, Dia 31", qty: 53.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "CALIFORNIA", product: "UVA S/SEMENTE", dates: "Dia 02, Dia 03, Dia 04, Dia 06, Dia 07, Dia 08, Dia 09, Dia 10, Dia 11, Dia 12, Dia 13, Dia 14, Dia 15, Dia 16, Dia 17, Dia 18, Dia 19, Dia 20, Dia 21, Dia 23, Dia 24, Dia 28, Dia 29, Dia 30, Dia 31", qty: 58.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "CALIFORNIA", product: "UVA THOMPSON", dates: "Dia 04, Dia 07, Dia 11, Dia 14, Dia 21, Dia 24, Dia 28, Dia 31", qty: 15.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "CALIFORNIA", product: "UVA VERDE", dates: "Dia 02, Dia 03, Dia 05, Dia 06, Dia 07, Dia 08, Dia 09, Dia 10, Dia 11, Dia 12, Dia 13, Dia 14, Dia 15, Dia 16, Dia 17, Dia 18, Dia 19, Dia 21, Dia 22, Dia 24, Dia 28, Dia 29, Dia 31", qty: 58.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "CALIFORNIA", product: "UVA VERDE S/C", dates: "Dia 23", qty: 2.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "CALIFORNIA", product: "UVA VERDE S/SEMENTE", dates: "Dia 17", qty: 1.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "CALIFORNIA", product: "UVA VITORIA", dates: "Dia 04, Dia 11, Dia 14, Dia 21, Dia 24, Dia 28, Dia 31", qty: 9.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "CALIFORNIA", product: "VAGEM", dates: "Dia 14", qty: 1.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "ABACATE", dates: "Dia 04, Dia 07, Dia 11, Dia 12, Dia 14, Dia 18, Dia 20, Dia 21, Dia 24, Dia 28, Dia 31", qty: 21.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "ABOBORA MARAN.", dates: "Dia 02, Dia 03, Dia 08, Dia 09, Dia 10, Dia 12, Dia 13, Dia 16, Dia 19, Dia 22, Dia 26, Dia 30", qty: 12.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "ABOBORA MORANG.", dates: "Dia 04, Dia 11", qty: 1.5, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "ABOBRINHA", dates: "Dia 02, Dia 04, Dia 07, Dia 11, Dia 13, Dia 14, Dia 17, Dia 18, Dia 21, Dia 24", qty: 9.5, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "ACELGA", dates: "Dia 04, Dia 07, Dia 10, Dia 11, Dia 14, Dia 16, Dia 18, Dia 21, Dia 24", qty: 9.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "AGUA 1,5 L", dates: "Dia 02, Dia 06, Dia 15, Dia 20, Dia 27", qty: 20.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "AGUA 1,5L", dates: "Dia 12, Dia 30", qty: 9.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "AGUA 20 L", dates: "Dia 06, Dia 16, Dia 27", qty: 15.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "AGUA 500 ML", dates: "Dia 15, Dia 27", qty: 7.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "AGUA 500ML", dates: "Dia 12", qty: 3.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "ALHO", dates: "Dia 01, Dia 02, Dia 03, Dia 05, Dia 06, Dia 08, Dia 10, Dia 11, Dia 12, Dia 15, Dia 17, Dia 18, Dia 20, Dia 26, Dia 27", qty: 19.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "AMEIXA F", dates: "Dia 03, Dia 04, Dia 07, Dia 10, Dia 11, Dia 14, Dia 18, Dia 21, Dia 24, Dia 28", qty: 32.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "AMEIXA SECA S/C", dates: "Dia 04, Dia 18", qty: 4.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "BANANA TERRA", dates: "Dia 02, Dia 04, Dia 05, Dia 08, Dia 09, Dia 10, Dia 11, Dia 12, Dia 14, Dia 16, Dia 17, Dia 19, Dia 21, Dia 23, Dia 24, Dia 27, Dia 31", qty: 2210.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "BATATA D/ROXA", dates: "Dia 21", qty: 2.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "BATATA DOCE", dates: "Dia 02, Dia 03, Dia 05, Dia 06, Dia 09, Dia 10, Dia 15, Dia 17, Dia 18, Dia 19, Dia 20, Dia 24, Dia 27", qty: 15.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "BATATA ING.", dates: "Dia 01, Dia 02, Dia 03, Dia 04, Dia 05, Dia 06, Dia 08, Dia 09, Dia 10, Dia 11, Dia 12, Dia 13, Dia 14, Dia 15, Dia 16, Dia 17, Dia 18, Dia 19, Dia 20, Dia 21, Dia 22, Dia 23, Dia 24, Dia 26, Dia 27, Dia 28, Dia 29, Dia 30", qty: 90.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "BERINJELA", dates: "Dia 02, Dia 04, Dia 08, Dia 11, Dia 12, Dia 14, Dia 18, Dia 22, Dia 24", qty: 9.5, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "BETERRABA", dates: "Dia 01, Dia 02, Dia 05, Dia 07, Dia 08, Dia 09, Dia 10, Dia 11, Dia 12, Dia 13, Dia 15, Dia 17, Dia 18, Dia 19, Dia 20, Dia 26, Dia 27, Dia 29, Dia 30", qty: 20.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "CASTANHA", dates: "Dia 13, Dia 27", qty: 15.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "CEBOLA BRANCA", dates: "Dia 02, Dia 03, Dia 05, Dia 07, Dia 08, Dia 09, Dia 10, Dia 11, Dia 12, Dia 13, Dia 15, Dia 16, Dia 17, Dia 18, Dia 20, Dia 22, Dia 23, Dia 24, Dia 27, Dia 29, Dia 30", qty: 61.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "CENELA EM PO", dates: "Dia 20", qty: 10.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "CENOURA", dates: "Dia 01, Dia 02, Dia 03, Dia 04, Dia 05, Dia 07, Dia 08, Dia 09, Dia 10, Dia 11, Dia 12, Dia 14, Dia 15, Dia 17, Dia 18, Dia 19, Dia 20, Dia 21, Dia 22, Dia 23, Dia 24, Dia 26, Dia 27, Dia 29, Dia 30, Dia 31", qty: 100.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "CEREJA FRESCA", dates: "Dia 04, Dia 07, Dia 11, Dia 14, Dia 18, Dia 21, Dia 24", qty: 3.5, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "CHUCHU", dates: "Dia 01, Dia 02, Dia 03, Dia 08, Dia 09, Dia 11, Dia 12, Dia 15, Dia 17, Dia 18, Dia 20, Dia 21, Dia 22, Dia 23, Dia 24, Dia 29", qty: 25.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "COCO SECO", dates: "Dia 03, Dia 05, Dia 08, Dia 09, Dia 12, Dia 19, Dia 21, Dia 26", qty: 400.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "COMINHO PURO", dates: "Dia 20", qty: 10.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "CRIVO", dates: "Dia 03, Dia 20", qty: 5.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "DAMASCO", dates: "Dia 18", qty: 0.5, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "DEDO DE MOCA", dates: "Dia 11, Dia 21", qty: 1.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "FIGO", dates: "Dia 04, Dia 07", qty: 1.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "GOIABA", dates: "Dia 02, Dia 07, Dia 15", qty: 4.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "INHAME KARA", dates: "Dia 03, Dia 06, Dia 07, Dia 09, Dia 11, Dia 15, Dia 16, Dia 17, Dia 27", qty: 9.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "KIWI", dates: "Dia 01, Dia 02, Dia 06, Dia 08, Dia 11, Dia 12, Dia 13, Dia 15, Dia 17, Dia 19, Dia 20, Dia 22, Dia 23, Dia 24, Dia 26, Dia 27", qty: 23.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "KIWI GOLD", dates: "Dia 11, Dia 21, Dia 24, Dia 28", qty: 2.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "LARANJA", dates: "Dia 06, Dia 08, Dia 15, Dia 22", qty: 16.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "LARANJA BAHIA", dates: "Dia 04, Dia 08, Dia 11, Dia 14, Dia 18, Dia 21, Dia 24, Dia 28", qty: 5.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "LARANJA LIMA", dates: "Dia 04, Dia 07, Dia 11, Dia 14, Dia 18, Dia 21, Dia 24, Dia 28", qty: 8.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "LIMA", dates: "Dia 04, Dia 07, Dia 11, Dia 14, Dia 18, Dia 21, Dia 24, Dia 28", qty: 8.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "LIMAO SICILIANO", dates: "Dia 04, Dia 07, Dia 11, Dia 14, Dia 18, Dia 21, Dia 24", qty: 4.5, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "MACA ARG", dates: "Dia 03, Dia 09, Dia 10, Dia 17, Dia 21", qty: 2.5, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "MACA NACIONAL", dates: "Dia 04, Dia 07, Dia 11, Dia 14, Dia 18, Dia 21, Dia 24, Dia 28, Dia 31", qty: 70.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "MACA SAQUINHO", dates: "Dia 04", qty: 0.5, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "MACA VERDE", dates: "Dia 03, Dia 11, Dia 13, Dia 21, Dia 30", qty: 3.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "MELAO REI", dates: "Dia 08, Dia 09, Dia 10, Dia 15, Dia 16, Dia 20, Dia 23", qty: 7.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "MILHO", dates: "Dia 04, Dia 11, Dia 14, Dia 18", qty: 2.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "MORANGO", dates: "Dia 20", qty: 10.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "MORCOTE", dates: "Dia 04, Dia 07, Dia 11, Dia 14, Dia 18, Dia 21, Dia 24, Dia 28", qty: 15.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "NABO", dates: "Dia 04", qty: 0.5, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "NECTARINA", dates: "Dia 11, Dia 18, Dia 21, Dia 24", qty: 11.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "OVO CAIPIRA", dates: "Dia 09", qty: 0.5, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "OVO CODORNA", dates: "Dia 16", qty: 1.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "OVO DSE CODORNA", dates: "Dia 24", qty: 1.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "OVO VERMELHO", dates: "Dia 09, Dia 15", qty: 1.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "PEPINO", dates: "Dia 02, Dia 05, Dia 08, Dia 09, Dia 10, Dia 11, Dia 13, Dia 15, Dia 17, Dia 18, Dia 20, Dia 24, Dia 29, Dia 31", qty: 14.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "PEPINO JAP.", dates: "Dia 07, Dia 11, Dia 14, Dia 18, Dia 21, Dia 24, Dia 28, Dia 31", qty: 7.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "PERA", dates: "Dia 04, Dia 07, Dia 11, Dia 14, Dia 18, Dia 21, Dia 24, Dia 28, Dia 31", qty: 11.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "PERA PORTUGUESA", dates: "Dia 04, Dia 07, Dia 11, Dia 14, Dia 21, Dia 24, Dia 28, Dia 31", qty: 8.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "PESSEGO", dates: "Dia 11, Dia 18, Dia 21, Dia 24", qty: 11.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "PHISALIS", dates: "Dia 04", qty: 0.5, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "PIMENTA BIQUINHO", dates: "Dia 24", qty: 10.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "PIMENTAO", dates: "Dia 01, Dia 02, Dia 05, Dia 06, Dia 08, Dia 09, Dia 10, Dia 12, Dia 13, Dia 15, Dia 17, Dia 19, Dia 20, Dia 21, Dia 22, Dia 23, Dia 24, Dia 26, Dia 27, Dia 28, Dia 29", qty: 44.5, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "PIMENTAO COLORIDO", dates: "Dia 04, Dia 07, Dia 11, Dia 14, Dia 18, Dia 21, Dia 24, Dia 28, Dia 31", qty: 9.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "PITAYA", dates: "Dia 04, Dia 11, Dia 18, Dia 21", qty: 64.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "QUIABO", dates: "Dia 05, Dia 06, Dia 10, Dia 13, Dia 14, Dia 18, Dia 20, Dia 27", qty: 10.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "RABANETE", dates: "Dia 04", qty: 0.5, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "REPOLHO ROXO", dates: "Dia 02, Dia 08, Dia 10, Dia 15, Dia 17, Dia 19, Dia 22, Dia 24", qty: 7.5, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "REPOLHO VERDE", dates: "Dia 01, Dia 03, Dia 06, Dia 09, Dia 10, Dia 11, Dia 12, Dia 13, Dia 15, Dia 17, Dia 20, Dia 22, Dia 23, Dia 24, Dia 26, Dia 27, Dia 30", qty: 21.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "TOMATE B-6", dates: "Dia 24, Dia 27, Dia 28, Dia 29", qty: 6.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "TOMATE B6", dates: "Dia 01, Dia 02, Dia 03, Dia 05, Dia 09", qty: 8.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "TOMATE B7", dates: "Dia 02, Dia 03, Dia 04, Dia 05, Dia 06, Dia 09, Dia 10, Dia 11, Dia 12, Dia 13, Dia 14, Dia 15, Dia 16, Dia 17, Dia 18, Dia 19, Dia 20, Dia 21, Dia 22, Dia 23, Dia 26, Dia 27, Dia 28, Dia 30, Dia 31", qty: 80.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "TOMATE CEREJA", dates: "Dia 04, Dia 07, Dia 11, Dia 14, Dia 21, Dia 24, Dia 28, Dia 31", qty: 5.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "UMA NUBIA", dates: "Dia 02, Dia 03, Dia 05, Dia 06, Dia 07, Dia 08, Dia 09, Dia 10, Dia 12, Dia 13, Dia 15, Dia 16, Dia 17, Dia 18, Dia 19, Dia 20, Dia 21, Dia 22, Dia 24, Dia 27, Dia 28, Dia 30", qty: 35.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "UVA CRINSON", dates: "Dia 15, Dia 18", qty: 2.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "UVA S/SEMENTE", dates: "Dia 02, Dia 03, Dia 05, Dia 06, Dia 07, Dia 09, Dia 10, Dia 11, Dia 12, Dia 13, Dia 14, Dia 16, Dia 17, Dia 19, Dia 21, Dia 23, Dia 24, Dia 26, Dia 27, Dia 29, Dia 30", qty: 43.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "UVA THOMPSON", dates: "Dia 04, Dia 07, Dia 11, Dia 14, Dia 18, Dia 21, Dia 24, Dia 27, Dia 28, Dia 31", qty: 38.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "UVA VERDE", dates: "Dia 02, Dia 06, Dia 07, Dia 08, Dia 10, Dia 12, Dia 13, Dia 14, Dia 15, Dia 16, Dia 19, Dia 20, Dia 22, Dia 24, Dia 28, Dia 30", qty: 27.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "UVA VERDE S/C", dates: "Dia 23", qty: 2.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "UVA VITORIA", dates: "Dia 04, Dia 07, Dia 11, Dia 14, Dia 18, Dia 21, Dia 24, Dia 28, Dia 31", qty: 28.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "VAGEM", dates: "Dia 04, Dia 07, Dia 11, Dia 18, Dia 21, Dia 24, Dia 28, Dia 31", qty: 6.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "JURACY", product: "YAKON", dates: "Dia 11, Dia 24", qty: 1.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "SAO CAETANO", product: "ABACATE", dates: "Dia 04, Dia 07, Dia 11, Dia 14, Dia 15, Dia 18, Dia 20, Dia 21, Dia 23, Dia 24, Dia 28, Dia 31", qty: 29.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "SAO CAETANO", product: "ABOBORA MARAN.", dates: "Dia 02, Dia 04, Dia 06, Dia 09, Dia 11, Dia 13, Dia 15, Dia 19, Dia 20, Dia 22, Dia 27, Dia 30", qty: 15.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "SAO CAETANO", product: "ABOBORA MORAN.", dates: "Dia 11", qty: 1.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "SAO CAETANO", product: "ABOBORA MORANG.", dates: "Dia 04", qty: 0.5, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "SAO CAETANO", product: "ABOBRINHA", dates: "Dia 04, Dia 06, Dia 07, Dia 09, Dia 11, Dia 13, Dia 14, Dia 18, Dia 20, Dia 21, Dia 23, Dia 24", qty: 12.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "SAO CAETANO", product: "ACELGA", dates: "Dia 04, Dia 07, Dia 11, Dia 14, Dia 18, Dia 21, Dia 24", qty: 7.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "SAO CAETANO", product: "AGUA 1,5 L", dates: "Dia 04, Dia 16", qty: 10.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "SAO CAETANO", product: "AGUA 20 L", dates: "Dia 16", qty: 5.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "SAO CAETANO", product: "AGUA 500 ML", dates: "Dia 04, Dia 16", qty: 9.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "SAO CAETANO", product: "ALHO", dates: "Dia 03, Dia 06, Dia 08, Dia 09, Dia 11, Dia 13, Dia 15, Dia 18, Dia 20, Dia 22, Dia 24, Dia 27, Dia 30", qty: 25.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "SAO CAETANO", product: "AMEIXA F", dates: "Dia 04, Dia 05, Dia 07, Dia 08, Dia 11, Dia 14, Dia 18, Dia 19, Dia 20, Dia 21, Dia 24, Dia 28", qty: 34.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "SAO CAETANO", product: "AMEIXA SECA S/C", dates: "Dia 04", qty: 1.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "SAO CAETANO", product: "BANANA TERRA", dates: "Dia 04, Dia 09, Dia 12, Dia 15, Dia 20, Dia 27, Dia 30", qty: 1600.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "SAO CAETANO", product: "BATATA D/ROXA", dates: "Dia 03, Dia 04, Dia 09, Dia 15, Dia 21, Dia 23, Dia 29", qty: 8.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "SAO CAETANO", product: "BATATA DOCE", dates: "Dia 02, Dia 03, Dia 04, Dia 05, Dia 06, Dia 08, Dia 10, Dia 11, Dia 15, Dia 16, Dia 17, Dia 18, Dia 19, Dia 20, Dia 22, Dia 23, Dia 24, Dia 27, Dia 29", qty: 28.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "SAO CAETANO", product: "BATATA ING.", dates: "Dia 02, Dia 03, Dia 04, Dia 05, Dia 06, Dia 08, Dia 09, Dia 10, Dia 11, Dia 12, Dia 13, Dia 15, Dia 16, Dia 17, Dia 18, Dia 19, Dia 20, Dia 21, Dia 22, Dia 23, Dia 24, Dia 27, Dia 28, Dia 29, Dia 30, Dia 31", qty: 71.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "SAO CAETANO", product: "BERINJELA", dates: "Dia 04, Dia 06, Dia 07, Dia 09, Dia 11, Dia 13, Dia 14, Dia 16, Dia 18, Dia 21, Dia 24, Dia 28, Dia 29", qty: 12.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "SAO CAETANO", product: "BETERRABA", dates: "Dia 03, Dia 04, Dia 06, Dia 09, Dia 10, Dia 11, Dia 13, Dia 14, Dia 15, Dia 17, Dia 18, Dia 20, Dia 21, Dia 23, Dia 24, Dia 27, Dia 28, Dia 29, Dia 30", qty: 20.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "SAO CAETANO", product: "CEBOLA BRANCA", dates: "Dia 03, Dia 04, Dia 05, Dia 07, Dia 09, Dia 11, Dia 13, Dia 14, Dia 15, Dia 16, Dia 18, Dia 19, Dia 20, Dia 21, Dia 22, Dia 23, Dia 24, Dia 27, Dia 30", qty: 50.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "SAO CAETANO", product: "CENOURA", dates: "Dia 02, Dia 03, Dia 04, Dia 05, Dia 06, Dia 07, Dia 09, Dia 10, Dia 11, Dia 13, Dia 14, Dia 15, Dia 16, Dia 17, Dia 18, Dia 19, Dia 20, Dia 21, Dia 22, Dia 23, Dia 24, Dia 26, Dia 27, Dia 29, Dia 30, Dia 31", qty: 62.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "SAO CAETANO", product: "CEREJA FRESCA", dates: "Dia 07, Dia 11, Dia 14, Dia 21, Dia 24", qty: 2.5, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "SAO CAETANO", product: "CEREJA FRSCA", dates: "Dia 18", qty: 0.5, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "SAO CAETANO", product: "CHUCHU", dates: "Dia 02, Dia 03, Dia 04, Dia 05, Dia 06, Dia 09, Dia 10, Dia 11, Dia 13, Dia 14, Dia 15, Dia 16, Dia 17, Dia 18, Dia 19, Dia 20, Dia 22, Dia 23, Dia 24, Dia 27, Dia 28, Dia 29", qty: 35.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "SAO CAETANO", product: "COCO SECO", dates: "Dia 03, Dia 10, Dia 13, Dia 19, Dia 24, Dia 28", qty: 500.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "SAO CAETANO", product: "CRIVO", dates: "Dia 04", qty: 1.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "SAO CAETANO", product: "DAMASCO", dates: "Dia 18", qty: 0.5, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "SAO CAETANO", product: "DEDO DE MOCA", dates: "Dia 11, Dia 21", qty: 1.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "SAO CAETANO", product: "FIGO", dates: "Dia 07", qty: 0.5, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "SAO CAETANO", product: "GOIABA", dates: "Dia 07, Dia 09, Dia 14, Dia 15, Dia 23, Dia 28, Dia 30", qty: 7.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "SAO CAETANO", product: "INHAME KARA", dates: "Dia 02, Dia 03, Dia 04, Dia 06, Dia 07, Dia 08, Dia 10, Dia 11, Dia 12, Dia 13, Dia 14, Dia 15, Dia 16, Dia 19, Dia 20, Dia 22, Dia 23, Dia 27", qty: 25.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "SAO CAETANO", product: "KIWI", dates: "Dia 05, Dia 06, Dia 07, Dia 09, Dia 11, Dia 14, Dia 15, Dia 16, Dia 17, Dia 18, Dia 19, Dia 23, Dia 24, Dia 27, Dia 30, Dia 31", qty: 20.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "SAO CAETANO", product: "KIWI GOLD", dates: "Dia 04, Dia 11, Dia 18, Dia 21, Dia 24, Dia 28", qty: 3.5, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "SAO CAETANO", product: "LARANJA BAHIA", dates: "Dia 04, Dia 08, Dia 11, Dia 14, Dia 18, Dia 21, Dia 24, Dia 28", qty: 5.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "SAO CAETANO", product: "LARANJA LIMA", dates: "Dia 04, Dia 07, Dia 11, Dia 14, Dia 18, Dia 21, Dia 24, Dia 28, Dia 31", qty: 10.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "SAO CAETANO", product: "LIMA", dates: "Dia 04, Dia 07, Dia 11, Dia 14, Dia 18, Dia 21, Dia 24, Dia 28, Dia 31", qty: 10.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "SAO CAETANO", product: "LIMAO SICILIANO", dates: "Dia 04, Dia 07, Dia 11, Dia 14, Dia 18, Dia 21, Dia 24", qty: 4.5, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "SAO CAETANO", product: "MACA ARG", dates: "Dia 02, Dia 03, Dia 11, Dia 12, Dia 15, Dia 17, Dia 23, Dia 24, Dia 28, Dia 29", qty: 6.5, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "SAO CAETANO", product: "MACA NACIONAL", dates: "Dia 04, Dia 07, Dia 11, Dia 14, Dia 18, Dia 21, Dia 24, Dia 28, Dia 31", qty: 93.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "SAO CAETANO", product: "MACA SAQUINHO", dates: "Dia 04, Dia 11", qty: 1.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "SAO CAETANO", product: "MACA VERDE", dates: "Dia 03, Dia 17, Dia 19, Dia 23, Dia 28, Dia 29", qty: 4.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "SAO CAETANO", product: "MELAO REI", dates: "Dia 04, Dia 11, Dia 12, Dia 18, Dia 21, Dia 24", qty: 6.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "SAO CAETANO", product: "MILHO", dates: "Dia 11, Dia 14, Dia 18", qty: 1.5, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "SAO CAETANO", product: "MORCOTE", dates: "Dia 04, Dia 07, Dia 11, Dia 14, Dia 18, Dia 21, Dia 24, Dia 28", qty: 15.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "SAO CAETANO", product: "NABO", dates: "Dia 04", qty: 0.5, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "SAO CAETANO", product: "NECTARINA", dates: "Dia 11, Dia 18, Dia 21, Dia 24", qty: 11.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "SAO CAETANO", product: "OVO CODORNA", dates: "Dia 03, Dia 20", qty: 1.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "SAO CAETANO", product: "OVO VERMELHO", dates: "Dia 09, Dia 30", qty: 1.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "SAO CAETANO", product: "PEPINO", dates: "Dia 03, Dia 04, Dia 06, Dia 08, Dia 09, Dia 10, Dia 12, Dia 13, Dia 14, Dia 15, Dia 16, Dia 17, Dia 18, Dia 19, Dia 20, Dia 21, Dia 23, Dia 24, Dia 28, Dia 29, Dia 30", qty: 28.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "SAO CAETANO", product: "PEPINO JAP.", dates: "Dia 11, Dia 14, Dia 18, Dia 21, Dia 24, Dia 31", qty: 5.5, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "SAO CAETANO", product: "PEPOINO JAP.", dates: "Dia 28", qty: 0.5, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "SAO CAETANO", product: "PERA", dates: "Dia 04, Dia 05, Dia 07, Dia 10, Dia 11, Dia 14, Dia 18, Dia 21, Dia 23, Dia 24, Dia 27, Dia 28, Dia 30, Dia 31", qty: 16.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "SAO CAETANO", product: "PERA PORTUGUESA", dates: "Dia 04, Dia 07, Dia 11, Dia 14, Dia 21, Dia 24, Dia 28, Dia 31", qty: 7.5, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "SAO CAETANO", product: "PESEGO", dates: "Dia 11", qty: 1.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "SAO CAETANO", product: "PESSEGO", dates: "Dia 11, Dia 18, Dia 21, Dia 24", qty: 11.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "SAO CAETANO", product: "PHISALIS", dates: "Dia 04", qty: 0.5, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "SAO CAETANO", product: "PIMENTAO", dates: "Dia 02, Dia 03, Dia 04, Dia 05, Dia 06, Dia 08, Dia 09, Dia 10, Dia 11, Dia 12, Dia 13, Dia 14, Dia 15, Dia 16, Dia 17, Dia 18, Dia 19, Dia 20, Dia 21, Dia 22, Dia 23, Dia 24, Dia 26, Dia 27, Dia 28, Dia 29, Dia 30, Dia 31", qty: 60.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "SAO CAETANO", product: "PIMENTAO COLORIDO", dates: "Dia 04, Dia 07, Dia 11, Dia 14, Dia 18, Dia 21, Dia 24, Dia 28, Dia 31", qty: 9.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "SAO CAETANO", product: "PITAYA", dates: "Dia 04, Dia 11, Dia 18, Dia 21", qty: 64.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "SAO CAETANO", product: "QUIABO", dates: "Dia 06, Dia 07, Dia 09, Dia 13, Dia 14, Dia 20, Dia 27, Dia 28, Dia 29", qty: 9.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "SAO CAETANO", product: "RABANETE", dates: "Dia 04", qty: 0.5, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "SAO CAETANO", product: "REPOLHO ROXO", dates: "Dia 09, Dia 13, Dia 15, Dia 19, Dia 22, Dia 27", qty: 6.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "SAO CAETANO", product: "REPOLHO VERDE", dates: "Dia 03, Dia 06, Dia 07, Dia 09, Dia 12, Dia 13, Dia 14, Dia 15, Dia 16, Dia 17, Dia 19, Dia 20, Dia 22, Dia 23, Dia 24, Dia 27, Dia 29, Dia 30", qty: 24.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "SAO CAETANO", product: "TOMATE B-6", dates: "Dia 23", qty: 3.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "SAO CAETANO", product: "TOMATE B6", dates: "Dia 02, Dia 03, Dia 04, Dia 05, Dia 09, Dia 10", qty: 10.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "SAO CAETANO", product: "TOMATE B7", dates: "Dia 02, Dia 03, Dia 04, Dia 05, Dia 06, Dia 09, Dia 10, Dia 11, Dia 12, Dia 13, Dia 14, Dia 15, Dia 16, Dia 17, Dia 18, Dia 19, Dia 20, Dia 21, Dia 22, Dia 23, Dia 26, Dia 27, Dia 28, Dia 29, Dia 30, Dia 31", qty: 83.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "SAO CAETANO", product: "TOMATE CEREJA", dates: "Dia 07, Dia 11, Dia 14, Dia 18, Dia 21, Dia 24, Dia 28, Dia 31", qty: 8.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "SAO CAETANO", product: "UMA NUBIA", dates: "Dia 06, Dia 08, Dia 09, Dia 11, Dia 12, Dia 13, Dia 15, Dia 16, Dia 18, Dia 19, Dia 21, Dia 24, Dia 27, Dia 30", qty: 35.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "SAO CAETANO", product: "UVA S/SEMENTE", dates: "Dia 03, Dia 06, Dia 08, Dia 09, Dia 10, Dia 11, Dia 12, Dia 13, Dia 15, Dia 16, Dia 17, Dia 18, Dia 19, Dia 20, Dia 21, Dia 23, Dia 24, Dia 26, Dia 27, Dia 30", qty: 54.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "SAO CAETANO", product: "UVA THOMPSON", dates: "Dia 04, Dia 11, Dia 18, Dia 21, Dia 31", qty: 21.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "SAO CAETANO", product: "UVA VERDE", dates: "Dia 02, Dia 03, Dia 04, Dia 08, Dia 09, Dia 12, Dia 13, Dia 15, Dia 16, Dia 17, Dia 18, Dia 20, Dia 21, Dia 24, Dia 30", qty: 39.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "SAO CAETANO", product: "UVA VITORIA", dates: "Dia 04, Dia 11, Dia 18, Dia 21", qty: 16.0, status: "Produto comprado mas não vendido" },
+            { id: "N/A", store: "SAO CAETANO", product: "VAGEM", dates: "Dia 07, Dia 11, Dia 18, Dia 21, Dia 24, Dia 28, Dia 31", qty: 7.0, status: "Produto comprado mas não vendido" }
+        ];
+
+        // Initialize Icons
+        lucide.createIcons();
+
+        // Render Table Function
+        function renderTable(data) {
+            const tableBody = document.getElementById('tableBody');
+            tableBody.innerHTML = '';
+
+            if (data.length === 0) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="px-6 py-12 text-center text-gray-500 italic">
+                            <i data-lucide="inbox" class="h-10 w-10 mx-auto mb-3 text-gray-300"></i>
+                            Nenhum resultado encontrado para os filtros selecionados.
+                        </td>
+                    </tr>
+                `;
+                lucide.createIcons();
+                document.getElementById('totalCount').innerText = 0;
+                return;
+            }
+
+            data.forEach((row, index) => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-0";
+                
+                tr.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-green-800">${row.store}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-bold">${row.product}</td>
+                    <td class="px-6 py-4 text-xs text-gray-500 break-words max-w-xs leading-relaxed">${row.dates}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-mono font-bold bg-gray-50 rounded-lg mx-2">${row.qty.toFixed(1)}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm">
+                        <span class="px-3 py-1 inline-flex text-xs leading-5 font-bold rounded-full bg-red-100 text-red-700 border border-red-200">
+                            ${row.status}
+                        </span>
+                    </td>
+                `;
+                tableBody.appendChild(tr);
+            });
+
+            document.getElementById('totalCount').innerText = data.length;
+            lucide.createIcons(); // Re-init icons for dynamic content if needed
+        }
+
+        // Filter Function
+        function filterData() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const selectedStore = document.getElementById('storeFilter').value;
+
+            const filtered = rawData.filter(item => {
+                const matchesSearch = item.product.toLowerCase().includes(searchTerm) || 
+                                      item.dates.toLowerCase().includes(searchTerm);
+                const matchesStore = selectedStore === 'TODAS' || item.store === selectedStore;
+                
+                return matchesSearch && matchesStore;
+            });
+
+            renderTable(filtered);
+        }
+
+        // Export Function
+        function exportCSV() {
+            const headers = ["ID do Produto,Loja,Nome do Produto,Dias de Compra,Quantidade Comprada,Status"];
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const selectedStore = document.getElementById('storeFilter').value;
+
+            // Get current filtered data for export
+            const filtered = rawData.filter(item => {
+                const matchesSearch = item.product.toLowerCase().includes(searchTerm) || 
+                                      item.dates.toLowerCase().includes(searchTerm);
+                const matchesStore = selectedStore === 'TODAS' || item.store === selectedStore;
+                return matchesSearch && matchesStore;
+            });
+
+            const csvRows = filtered.map(row => 
+                `"${row.id}","${row.store}","${row.product}","${row.dates}","${row.qty}","${row.status}"`
+            );
+            
+            const csvContent = [headers, ...csvRows].join("\n");
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", "relatorio_hortifruti_cg.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // Initial Render
+        renderTable(rawData);
+
+    </script>
+</body>
+</html>
